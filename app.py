@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch
 import cv2
 import os
+import numpy as np  # <-- Import numpy
 from torchvision import transforms
 from ultralytics import YOLO
 from net import Net as FreshnessNet
