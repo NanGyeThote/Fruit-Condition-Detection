@@ -41,6 +41,7 @@ def freshness_label(freshness_percentage):
         return "Poor!"
     else:
         return "Fresh!"
+
 def show_detected_image(image, results):
     img = np.array(image)  # Convert to numpy array for OpenCV processing
     for result in results[0].boxes:
