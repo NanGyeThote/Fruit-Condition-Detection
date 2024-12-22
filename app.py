@@ -165,7 +165,7 @@ if uploaded_file is not None:
     processed_img, detection_results = process_frame_with_condition(img)
 
     # Show processed image with bounding boxes and labels
-    st.image(processed_img, channels='BGR', caption="Processed Image", use_column_width=True)
+    st.image(processed_img, channels='BGR', caption="Processed Image", use_container_width=True)
 
     # Display detection results
     if detection_results:
