@@ -3,11 +3,13 @@ import torch.nn as nn
 import torch
 import cv2
 import os
-import numpy as np  # <-- Import numpy
+import numpy as np
 from torchvision import transforms
 from ultralytics import YOLO
 from net import Net as FreshnessNet
 from net1 import Net as ClassificationNet
+import time
+import streamlit.components.v1 as components
 
 # OpenAI API (if needed)
 import openai
@@ -152,25 +154,64 @@ def process_frame_with_condition(cv_image):
 
     return cv_image, detection_results
 
-# Streamlit video processing
-st.title('Fruit & Vegetable Freshness and Condition Detection')
+# Home Page Content
+def home_page():
+    st.title("Fruit & Vegetable Freshness and Condition Detection")
+    st.write("Welcome to our Fruit and Vegetable Freshness and Condition Detection App! Upload an image of a fruit or vegetable and our model will detect the object, assess its freshness, and tell you its condition.")
+    st.markdown("""
+    ### How It Works:
+    1. Upload an image of a fruit or vegetable.
+    2. Our YOLO-based detection model identifies the object.
+    3. Freshness condition is calculated using a deep learning model.
+    4. We provide an estimated best-before date based on the freshness percentage.
+    """)
+    st.write("Experience real-time analysis of your food's freshness!")
 
-# Option to upload video or image
-uploaded_file = st.file_uploader("Upload an Image", type=['jpg', 'jpeg', 'png'])
+# Detection Page Content
+def detection_page():
+    st.title("Upload Image for Detection")
+    uploaded_file = st.file_uploader("Upload an Image", type=['jpg', 'jpeg', 'png'])
 
-if uploaded_file is not None:
-    img = cv2.imdecode(np.frombuffer(uploaded_file.read(), np.uint8), cv2.IMREAD_COLOR)
+    if uploaded_file is not None:
+        img = cv2.imdecode(np.frombuffer(uploaded_file.read(), np.uint8), cv2.IMREAD_COLOR)
 
-    # Process the image with object detection and freshness checking
-    processed_img, detection_results = process_frame_with_condition(img)
+        # Process the image with object detection and freshness checking
+        processed_img, detection_results = process_frame_with_condition(img)
 
-    # Show processed image with bounding boxes and labels
-    st.image(processed_img, channels='BGR', caption="Processed Image", use_container_width=True)
+        # Show processed image with bounding boxes and labels
+        st.image(processed_img, channels='BGR', caption="Processed Image", use_column_width=True)
 
-    # Display detection results
-    if detection_results:
-        st.subheader("Detection Results:")
-        for result in detection_results:
-            st.write(f"Object: {result['name']}, Freshness: {result['freshness']}, Best Before: {result['best_before']}")
-    else:
-        st.write("No objects detected.")
+        # Display detection results
+        if detection_results:
+            st.subheader("Detection Results:")
+            for result in detection_results:
+                st.write(f"Object: {result['name']}, Freshness: {result['freshness']}, Best Before: {result['best_before']}")
+        else:
+            st.write("No objects detected.")
+
+# Streamlit page navigation
+PAGES = {
+    "Home": home_page,
+    "Detection": detection_page,
+}
+
+# Select which page to display
+page = st.sidebar.selectbox("Choose a page", options=PAGES.keys())
+PAGES[page]()
+
+# Animation using Lottie or simple CSS animation
+st.markdown("""
+<style>
+@keyframes fadeIn { 
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+.fadeIn {
+  animation: fadeIn 3s ease-in-out;
+}
+</style>
+<div class="fadeIn">
+    <h2>Enjoy our Fruit & Vegetable Detection App!</h2>
+</div>
+""", unsafe_allow_html=True)
+
