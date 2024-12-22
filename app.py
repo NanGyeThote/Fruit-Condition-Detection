@@ -41,20 +41,16 @@ def freshness_label(freshness_percentage):
         return "Poor!"
     else:
         return "Fresh!"
-
 def show_detected_image(image, results):
     img = np.array(image)  # Convert to numpy array for OpenCV processing
     for result in results[0].boxes:
-        bbox = result.xywh  # Get bounding box (tensor with shape [1, 4])
-        
-        # Ensure that bbox is extracted correctly
-        bbox = bbox.squeeze(0)  # Remove the extra dimension, so bbox becomes a tensor of shape [4]
+        bbox = result.xywh  # Get bounding box (ensure it's a tensor or list with 4 elements)
         
         # Add debugging output
         st.write(f"Bounding box data: {bbox}")  # Log bbox data for inspection
         
-        if bbox.size(0) == 4:  # Ensure bbox has 4 elements (center_x, center_y, w, h)
-            center_x, center_y, w, h = bbox[0].item(), bbox[1].item(), bbox[2].item(), bbox[3].item()
+        if len(bbox) >= 4:  # Ensure bbox has 4 elements (center_x, center_y, w, h)
+            center_x, center_y, w, h = bbox[0], bbox[1], bbox[2], bbox[3]
             
             # Calculate top-left coordinates (x1, y1)
             x1 = int(center_x - w / 2)
