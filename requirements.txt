@@ -3,6 +3,7 @@ torch
 torchvision
 opencv-python-headless
 opencv-python
+streamlit-lottie
 ultralytics
 Pillow
 numpy
