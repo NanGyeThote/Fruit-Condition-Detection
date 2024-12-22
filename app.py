@@ -42,25 +42,27 @@ def freshness_percentage_by_cv_image(cv_image):
 def show_detected_image(image, results):
     img = np.array(image)
     for result in results[0].boxes:
-        bbox = result.xywh
+        bbox = result.xywh  # This should be a 4-element tensor [center_x, center_y, width, height]
         confidence = result.conf
         class_id = result.cls
         
-        # Get the class name dynamically from the YOLO model
-        class_name = class_labels[int(class_id)] if int(class_id) < len(class_labels) else 'Unknown'
+        # Extract width and height
+        center_x, center_y, w, h = bbox[0], bbox[1], bbox[2], bbox[3]
         
-        # Get coordinates for bounding box
-        x1, y1, w, h = int(bbox[0] - w/2), int(bbox[1] - h/2), int(w), int(h)
+        # Calculate top-left coordinates (x1, y1)
+        x1 = int(center_x - w / 2)
+        y1 = int(center_y - h / 2)
         
         # Draw rectangle and label
-        cv2.rectangle(img, (x1, y1), (x1 + w, y1 + h), (255, 0, 0), 2)
-        cv2.putText(img, f'{class_name} {confidence:.2f}', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 0, 0), 2)
+        cv2.rectangle(img, (x1, y1), (int(x1 + w), int(y1 + h)), (255, 0, 0), 2)
+        cv2.putText(img, f'{class_labels[int(class_id)]} {confidence:.2f}', 
+                    (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 0, 0), 2)
         
         # Freshness Check
         freshness_percentage = freshness_percentage_by_cv_image(img)
         freshness = freshness_label(freshness_percentage)
-        cv2.putText(img, f'Freshness: {freshness} ({freshness_percentage}%)', (x1, y1 + h + 10), 
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
+        cv2.putText(img, f'Freshness: {freshness} ({freshness_percentage}%)', 
+                    (x1, y1 + int(h) + 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
     
     return Image.fromarray(img)
 
