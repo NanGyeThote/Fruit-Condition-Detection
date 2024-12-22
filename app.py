@@ -139,15 +139,15 @@ def process_frame_with_condition(cv_image):
             class_name = classNames[cls]  # This will be the detected object class (e.g., 'apple', 'banana', etc.)
 
             # Add text to the image (object name, freshness condition, best before)
-            label_text = f'{class_name}: {freshness_condition}, {best_before}'
+            label_text = f'{class_name}'
             cv2.putText(cv_image, label_text, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
             cv2.rectangle(cv_image, (x1, y1), (x2, y2), (0, 255, 0), 2)  # Draw bounding box
 
             # Collect the detection result (can be passed to frontend or logged)
             detection_results.append({
                 'name': class_name,
-                # 'freshness': freshness_condition,
-                # 'best_before': best_before,
+                'freshness': freshness_condition,
+                'best_before': best_before,
             })
 
     return cv_image, detection_results
