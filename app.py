@@ -1,21 +1,14 @@
 import streamlit as st
-import torch.nn as nn
-import torch
 import cv2
-import numpy as np
-from torchvision import transforms
+import torch
 from ultralytics import YOLO
-from net import Net as FreshnessNet
-from net1 import Net as ClassificationNet
-import os
+import numpy as np
+from PIL import Image
+from torchvision import transforms
+import torch.nn as nn
+from net import Net as FreshnessNet  # Assuming your freshness model is loaded here
 
-# Global model variables
-FRESHNESS_MODEL = None
-FV_MODEL = None
-YOLO_MODEL = None
-model_Yolo = None
-
-# Class labels for fruits and vegetables
+# Define class labels (update with your class labels)
 class_labels = {
     0: 'apple',
     1: 'banana',
@@ -30,52 +23,23 @@ class_labels = {
     10: 'watermelon'
 }
 
-# Load the models
+# Load YOLOv8 model
+model_Yolo = YOLO('yolov8n.pt')  # Update with your YOLO model file
+
+# Load the Freshness Model
 def get_freshness_model():
-    global FRESHNESS_MODEL
-    if FRESHNESS_MODEL is None:
-        FRESHNESS_MODEL = FreshnessNet()
-        FRESHNESS_MODEL.load_state_dict(torch.load("model.pt", map_location=torch.device("cpu")))
-        FRESHNESS_MODEL.eval()
-    return FRESHNESS_MODEL
-
-def get_fv_model():
-    global FV_MODEL
-    if FV_MODEL is None:
-        FV_MODEL = ClassificationNet(num_classes=11)
-        FV_MODEL.load_state_dict(torch.load("final.pth", map_location=torch.device("cpu")))
-        FV_MODEL.eval()
-    return FV_MODEL
-
-def get_yolo_model():
-    global YOLO_MODEL
-    if YOLO_MODEL is None:
-        YOLO_MODEL = YOLO("freshify.pt")  # Path to your YOLO model
-    return YOLO_MODEL
-
-# def get_yolov8n_model():
-#     global model_Yolo
-#     if model_Yolo is None:
-#         model_Yolo = YOLO('yolov8n.pt')  # Path to your YOLO model
-#     return model_Yolo
-
-# Freshness conditions
-def freshness_label(freshness_percentage):
-    if freshness_percentage > 90:
-        return "Fresh!"
-    elif freshness_percentage > 65:
-        return "Good!"
-    elif freshness_percentage > 50:
-        return "Fair!"
-    elif freshness_percentage > 0 and freshness_percentage < 10:
-        return "Poor!"
-    else:
-        return "Fresh!"  # Default to fresh if percentage is invalid
+    model = FreshnessNet()
+    model.load_state_dict(torch.load("model.pt", map_location=torch.device("cpu")))
+    model.eval()
+    return model
 
 def freshness_percentage_by_cv_image(cv_image):
     mean = (0.7369, 0.6360, 0.5318)
     std = (0.3281, 0.3417, 0.3704)
-    transformation = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean, std)])
+    transformation = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize(mean, std)
+    ])
     image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB)
     image = cv2.resize(image, (32, 32))
     image_tensor = transformation(image)
@@ -87,63 +51,72 @@ def freshness_percentage_by_cv_image(cv_image):
     result = s(out)
     return int(result[0][0].item() * 100)
 
-# Classify fruit/vegetable
-def classify_fruit_vegetable(cv_image):
-    transformation = transforms.Compose([transforms.ToTensor(), transforms.Resize((64, 64))])
-    image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB)
-    image_tensor = transformation(image)
-    batch = image_tensor.unsqueeze(0)
-    model = get_fv_model()
-    with torch.no_grad():
-        out = model(batch)
-    _, predicted = torch.max(out, 1)
-    return class_labels[predicted.item()]
+def show_detected_image(image, results):
+    img = np.array(image)
+    for result in results[0].boxes:
+        bbox = result.xywh
+        confidence = result.conf
+        class_id = result.cls
+        class_name = class_labels[int(class_id)]
+        
+        # Get coordinates for bounding box
+        x1, y1, w, h = int(bbox[0] - w/2), int(bbox[1] - h/2), int(w), int(h)
+        
+        # Draw rectangle and label
+        cv2.rectangle(img, (x1, y1), (x1 + w, y1 + h), (255, 0, 0), 2)
+        cv2.putText(img, f'{class_name} {confidence:.2f}', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 0, 0), 2)
+        
+        # Freshness Check
+        freshness_percentage = freshness_percentage_by_cv_image(img)
+        freshness = freshness_label(freshness_percentage)
+        cv2.putText(img, f'Freshness: {freshness} ({freshness_percentage}%)', (x1, y1 + h + 10), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
+    
+    return Image.fromarray(img)
 
-# Object detection using YOLO
-def detect_objects_with_yolo(cv_image):
-    model = get_yolo_model()
-    results = model(cv_image)
+def freshness_label(freshness_percentage):
+    if freshness_percentage > 90:
+        return "Fresh!"
+    elif freshness_percentage > 65:
+        return "Good!"
+    elif freshness_percentage > 50:
+        return "Fair!"
+    elif freshness_percentage > 0 and freshness_percentage < 10:
+        return "Poor!"
+    else:
+        return "Fresh!"  # Default to fresh if something goes wrong
+
+def detect_objects(image):
+    # Run detection on the image
+    results = model_Yolo(image)
     return results
 
-# Streamlit interface
-st.title("Freshness and Object Detection App")
+def main():
+    st.title("Object Detection and Freshness Check")
 
-# Upload image
-uploaded_file = st.file_uploader("Choose a file", type=["jpg", "jpeg", "png", "mp4", "MOV"])
-
-if uploaded_file is not None:
-    # Read the image
-    file_bytes = uploaded_file.read()
-    img = cv2.imdecode(np.frombuffer(file_bytes, np.uint8), cv2.IMREAD_COLOR)
-
-    # Show the uploaded image
-    st.image(img, channels="BGR", caption="Uploaded Image")
-
-    # Perform object detection
-    detection_results = detect_objects_with_yolo(img)
+    uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
     
-    # Display detected bounding boxes on the image
-    for bbox in detection_results.xywh[0]:  # Assuming we are working with the first image in the batch
-        x, y, w, h, conf, cls = bbox  # Get bounding box coordinates, confidence, and class ID
-        class_id = int(cls)
-        label = class_labels.get(class_id, "Unknown")
-        color = (0, 255, 0)  # Green bounding box color
-        
-        # Draw bounding box on the image
-        x1, y1, x2, y2 = int(x - w / 2), int(y - h / 2), int(x + w / 2), int(y + h / 2)
-        cv2.rectangle(img, (x1, y1), (x2, y2), color, 2)
-        cv2.putText(img, f"{label} {conf:.2f}", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
+    if uploaded_file is not None:
+        # Convert uploaded file to OpenCV format
+        image = Image.open(uploaded_file)
+        st.image(image, caption="Uploaded Image", use_column_width=True)
 
-    # Display the image with bounding boxes
-    st.image(img, channels="BGR", caption="Image with Object Detection")
+        # Perform object detection
+        results = detect_objects(image)
 
-    # Perform classification on the entire image
-    class_name = classify_fruit_vegetable(img)
-    st.write(f"Classified as: {class_name}")
-    
-    # Calculate freshness percentage
-    freshness_percentage = freshness_percentage_by_cv_image(img)
-    
-    # Display freshness condition
-    freshness_condition = freshness_label(freshness_percentage)
-    st.write(f"Freshness: {freshness_condition} ({freshness_percentage}%)")
+        # Show detected image with bounding boxes and freshness
+        detected_image = show_detected_image(image, results)
+        st.image(detected_image, caption="Detected Objects and Freshness", use_column_width=True)
+
+        # Display detection results and freshness information
+        for result in results[0].boxes:
+            bbox = result.xywh
+            confidence = result.conf
+            class_id = result.cls
+            class_name = class_labels[int(class_id)]
+            freshness_percentage = freshness_percentage_by_cv_image(np.array(image))
+            freshness = freshness_label(freshness_percentage)
+            st.write(f"Detected {class_name} with confidence {confidence:.2f} at {bbox} - Freshness: {freshness} ({freshness_percentage}%)")
+
+if __name__ == "__main__":
+    main()
