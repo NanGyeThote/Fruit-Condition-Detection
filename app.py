@@ -146,8 +146,8 @@ def process_frame_with_condition(cv_image):
             # Collect the detection result (can be passed to frontend or logged)
             detection_results.append({
                 'name': class_name,
-                'freshness': freshness_condition,
-                'best_before': best_before,
+                # 'freshness': freshness_condition,
+                # 'best_before': best_before,
             })
 
     return cv_image, detection_results
