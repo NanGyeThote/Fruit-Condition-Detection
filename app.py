@@ -141,7 +141,7 @@ def process_frame_with_condition(cv_image):
             class_name = classNames[cls]  # This will be the detected object class (e.g., 'apple', 'banana', etc.)
 
             # Add text to the image (object name, freshness condition, best before)
-            label_text = f'{class_name}'
+            label_text = f'{class_name}: {freshness_condition}, {best_before}'
             cv2.putText(cv_image, label_text, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
             cv2.rectangle(cv_image, (x1, y1), (x2, y2), (0, 255, 0), 2)  # Draw bounding box
 
@@ -209,9 +209,12 @@ st.markdown("""
 .fadeIn {
   animation: fadeIn 3s ease-in-out;
 }
+
+.stSelectbox div:hover {
+    cursor: pointer;
+}
 </style>
 <div class="fadeIn">
     <h2>Enjoy our Fruit & Vegetable Detection App!</h2>
 </div>
 """, unsafe_allow_html=True)
-
