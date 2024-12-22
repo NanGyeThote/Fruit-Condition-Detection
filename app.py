@@ -1,15 +1,16 @@
 import streamlit as st
-import numpy as np
 import cv2
-from PIL import Image
-from ultralytics import YOLO
 import torch
 from torchvision import transforms
+import cvzone
+from ultralytics import YOLO
+import os
+import numpy as np
 
-# Load your YOLO model and other necessary models (ensure you use correct paths)
-yolo_model = YOLO("freshify.pt")  # Ensure your trained model is in the correct path
+# Global model variables
+YOLO_MODEL = None
 
-# Class labels for fruit/vegetable classification (example)
+# Class labels
 class_labels = {
     0: 'apple',
     1: 'banana',
@@ -24,12 +25,7 @@ class_labels = {
     10: 'watermelon'
 }
 
-# Freshness detection (implement your own model or use an existing one)
-def freshness_percentage_by_cv_image(cv_image):
-    # Implement the freshness checker model
-    # This function should return the freshness percentage of the fruit
-    return 85  # Placeholder value for now
-
+# Freshness labels based on percentage
 def freshness_label(freshness_percentage):
     if freshness_percentage > 90:
         return "Fresh!"
@@ -40,55 +36,84 @@ def freshness_label(freshness_percentage):
     elif freshness_percentage > 0 and freshness_percentage < 10:
         return "Poor!"
     else:
-        return "Fresh!"
-def show_detected_image(image, results):
-    img = np.array(image)  # Convert to numpy array for OpenCV processing
-    for result in results[0].boxes:
-        bbox = result.xywh  # Get bounding box (ensure it's a tensor or list with 4 elements)
-        
-        # Add debugging output
-        st.write(f"Bounding box data: {bbox}")  # Log bbox data for inspection
-        
-        if len(bbox) >= 4:  # Ensure bbox has 4 elements (center_x, center_y, w, h)
-            center_x, center_y, w, h = bbox[0], bbox[1], bbox[2], bbox[3]
+        return "Spoiled"
+
+# Function to load YOLO model
+def get_yolo_model():
+    global YOLO_MODEL
+    if YOLO_MODEL is None:
+        YOLO_MODEL = YOLO("freshify.pt")
+    return YOLO_MODEL
+
+# Function to classify fruit or vegetable (Example classification model)
+def classify_fruit_vegetable(cv_image):
+    transformation = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Resize((64, 64)),
+    ])
+    image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB)
+    image_tensor = transformation(image)
+    batch = image_tensor.unsqueeze(0)
+    # Assuming you have a model for classification
+    # Replace with the correct model to classify
+    model = torch.load("your_model.pth", map_location=torch.device("cpu"))
+    model.eval()
+    with torch.no_grad():
+        out = model(batch)
+    _, predicted = torch.max(out, 1)
+    return class_labels[predicted.item()]
+
+# Function to calculate freshness percentage (dummy logic)
+def freshness_percentage_by_cv_image(cv_image):
+    # Simple dummy logic for freshness percentage
+    # You can replace this with an actual model or logic
+    return np.random.randint(10, 100)  # Random percentage between 10 and 100
+
+# Function to process frame and add bounding boxes and freshness condition
+def process_frame(cv_image):
+    yolo_model = get_yolo_model()
+    classNames = yolo_model.module.names if hasattr(yolo_model, 'module') else yolo_model.names
+    results = yolo_model(cv_image)
+    detection_results = []
+
+    for r in results:
+        boxes = r.boxes
+        for box in boxes:
+            x1, y1, x2, y2 = map(int, box.xyxy[0])
+            roi = cv_image[y1:y2, x1:x2]
+            freshness_percentage = freshness_percentage_by_cv_image(roi)
+            fruit_vegetable_name = classify_fruit_vegetable(roi)
+            cls = int(box.cls[0])
+            class_name = classNames[cls]
             
-            # Calculate top-left coordinates (x1, y1)
-            x1 = int(center_x - w / 2)
-            y1 = int(center_y - h / 2)
-            
-            # Draw rectangle and label on the image
-            cv2.rectangle(img, (x1, y1), (int(x1 + w), int(y1 + h)), (255, 0, 0), 2)
-            cv2.putText(img, f'{class_labels[int(result.cls)]} {result.conf:.2f}', 
-                        (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 0, 0), 2)
-            
-            # Freshness check
-            freshness_percentage = freshness_percentage_by_cv_image(img)
+            # Determine the freshness label
             freshness = freshness_label(freshness_percentage)
-            cv2.putText(img, f'Freshness: {freshness} ({freshness_percentage}%)', 
-                        (x1, y1 + int(h) + 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
-        else:
-            st.write(f"Invalid bbox structure: {bbox}")  # Log invalid bbox
+            
+            # Add text and bounding box on the image
+            label_text = f"{class_name} - {freshness}"
+            cvzone.putTextRect(cv_image, label_text, (x1, y1 - 10), scale=1, thickness=2)
+            cvzone.cornerRect(cv_image, (x1, y1, x2 - x1, y2 - y1))
+            
+            detection_results.append({'name': class_name, 'condition': freshness})
 
-    # Convert the image to PIL format and return for display
-    return Image.fromarray(img)
+    return cv_image, detection_results
 
-def main():
-    # Title of the Streamlit app
-    st.title("Fruit Condition Detection")
+# Streamlit Image Upload
+st.title("Fruit and Vegetable Classification")
+uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
+
+if uploaded_file is not None:
+    # Read the uploaded image and process it
+    img = cv2.imdecode(np.frombuffer(uploaded_file.read(), np.uint8), 1)
+    processed_img, detection_results = process_frame(img)
+
+    # Display the processed image with bounding boxes and freshness condition
+    st.image(processed_img, channels="BGR", caption="Processed Image", use_column_width=True)
     
-    # File uploader widget
-    uploaded_file = st.file_uploader("Upload an Image", type=["jpg", "jpeg", "png"])
-    
-    if uploaded_file is not None:
-        # Load the image using PIL
-        image = Image.open(uploaded_file)
-        
-        # Run YOLO object detection
-        results = yolo_model(image)  # Ensure this returns the detection results
-        
-        # Show the detected image with bounding boxes and freshness info
-        detected_image = show_detected_image(image, results)
-        st.image(detected_image, caption="Processed Image", use_container_width=True)
-
-if __name__ == "__main__":
-    main()
+    # Show detection results with condition
+    if detection_results:
+        st.write("Detected Objects and Conditions:")
+        for result in detection_results:
+            st.write(f"Class: {result['name']}, Condition: {result['condition']}")
+    else:
+        st.write("No objects detected.")
