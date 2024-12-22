@@ -4,7 +4,8 @@ This is a Streamlit web application for detecting the freshness of fruits and ve
 
 ## Screenshots 📸
 
-![mainpage](img1.jpg)
+![mainpage](img.png)
+![process](img1.png)
 
 ## Models Used
 
