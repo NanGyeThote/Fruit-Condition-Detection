@@ -55,7 +55,7 @@ def classify_fruit_vegetable(cv_image):
     batch = image_tensor.unsqueeze(0)
     # Assuming you have a model for classification
     # Replace with the correct model to classify
-    model = torch.load("your_model.pth", map_location=torch.device("cpu"))
+    model = torch.load("final.pth", map_location=torch.device("cpu"))
     model.eval()
     with torch.no_grad():
         out = model(batch)
