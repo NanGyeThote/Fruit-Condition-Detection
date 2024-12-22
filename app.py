@@ -41,37 +41,35 @@ def freshness_label(freshness_percentage):
         return "Poor!"
     else:
         return "Fresh!"
-
 def show_detected_image(image, results):
-    img = np.array(image)
+    img = np.array(image)  # Convert to numpy array for OpenCV processing
     for result in results[0].boxes:
-        bbox = result.xywh  # This should be a tensor or array containing bounding box details
+        bbox = result.xywh  # Get bounding box (ensure it's a tensor or list with 4 elements)
         
-        # Display bbox data in Streamlit for inspection
-        st.write(f"Bounding box data: {bbox}")  # This will print the bbox to the Streamlit interface
+        # Add debugging output
+        st.write(f"Bounding box data: {bbox}")  # Log bbox data for inspection
         
-        # Check if bbox has the correct number of elements (4)
-        if len(bbox) >= 4:
+        if len(bbox) >= 4:  # Ensure bbox has 4 elements (center_x, center_y, w, h)
             center_x, center_y, w, h = bbox[0], bbox[1], bbox[2], bbox[3]
             
             # Calculate top-left coordinates (x1, y1)
             x1 = int(center_x - w / 2)
             y1 = int(center_y - h / 2)
             
-            # Draw rectangle and label
+            # Draw rectangle and label on the image
             cv2.rectangle(img, (x1, y1), (int(x1 + w), int(y1 + h)), (255, 0, 0), 2)
             cv2.putText(img, f'{class_labels[int(result.cls)]} {result.conf:.2f}', 
                         (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 0, 0), 2)
             
-            # Freshness Check
+            # Freshness check
             freshness_percentage = freshness_percentage_by_cv_image(img)
             freshness = freshness_label(freshness_percentage)
             cv2.putText(img, f'Freshness: {freshness} ({freshness_percentage}%)', 
                         (x1, y1 + int(h) + 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
         else:
-            st.write(f"Invalid bbox structure: {bbox}")  # Log the invalid bbox structure
-    
-    # Convert the image to PIL format for Streamlit
+            st.write(f"Invalid bbox structure: {bbox}")  # Log invalid bbox
+
+    # Convert the image to PIL format and return for display
     return Image.fromarray(img)
 
 def main():
@@ -90,7 +88,7 @@ def main():
         
         # Show the detected image with bounding boxes and freshness info
         detected_image = show_detected_image(image, results)
-        st.image(detected_image, caption="Processed Image", use_column_width=True)
+        st.image(detected_image, caption="Processed Image", use_container_width=True)
 
 if __name__ == "__main__":
     main()
