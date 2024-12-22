@@ -181,7 +181,9 @@ def detection_page():
         if detection_results:
             st.subheader("Detection Results:")
             for result in detection_results:
-                st.write(f"Object: {result['name']}, Freshness: {result['freshness']}, Best Before: {result['best_before']}")
+                st.write(f"Object: {result['name']}")
+                st.write(f"Freshness: {result['freshness']}")
+                st.write(f"Best Before: {result['best_before']}")
         else:
             st.write("No objects detected.")
 
