@@ -2,7 +2,6 @@ import streamlit as st
 import cv2
 import torch
 from torchvision import transforms
-import cvzone
 from ultralytics import YOLO
 import os
 import numpy as np
@@ -89,11 +88,12 @@ def process_frame(cv_image):
             # Determine the freshness label
             freshness = freshness_label(freshness_percentage)
             
-            # Add text and bounding box on the image
-            label_text = f"{class_name} - {freshness}"
-            cvzone.putTextRect(cv_image, label_text, (x1, y1 - 10), scale=1, thickness=2)
-            cvzone.cornerRect(cv_image, (x1, y1, x2 - x1, y2 - y1))
-            
+            # Draw bounding box and label on the image
+            color = (0, 255, 0)  # Green color for the bounding box and text
+            cv2.rectangle(cv_image, (x1, y1), (x2, y2), color, 2)
+            label = f"{class_name} - {freshness}"
+            cv2.putText(cv_image, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
+
             detection_results.append({'name': class_name, 'condition': freshness})
 
     return cv_image, detection_results
