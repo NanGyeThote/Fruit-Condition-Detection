@@ -8,23 +8,11 @@ from torchvision import transforms
 import torch.nn as nn
 from net import Net as FreshnessNet  # Assuming your freshness model is loaded here
 
-# Define class labels (update with your class labels)
-class_labels = {
-    0: 'apple',
-    1: 'banana',
-    2: 'cucumber',
-    3: 'grape',
-    4: 'guava',
-    5: 'mango',
-    6: 'orange',
-    7: 'pineapple',
-    8: 'strawberry',
-    9: 'tomato',
-    10: 'watermelon'
-}
-
 # Load YOLOv8 model
-model_Yolo = YOLO('yolov8n.pt')  # Update with your YOLO model file
+model_Yolo = YOLO('freshify.pt')  # Load your trained YOLO model
+
+# Extract class names from the YOLO model
+class_labels = model_Yolo.names  # 'names' attribute contains the class names
 
 # Load the Freshness Model
 def get_freshness_model():
@@ -57,7 +45,9 @@ def show_detected_image(image, results):
         bbox = result.xywh
         confidence = result.conf
         class_id = result.cls
-        class_name = class_labels[int(class_id)]
+        
+        # Get the class name dynamically from the YOLO model
+        class_name = class_labels[int(class_id)] if int(class_id) < len(class_labels) else 'Unknown'
         
         # Get coordinates for bounding box
         x1, y1, w, h = int(bbox[0] - w/2), int(bbox[1] - h/2), int(w), int(h)
@@ -113,7 +103,7 @@ def main():
             bbox = result.xywh
             confidence = result.conf
             class_id = result.cls
-            class_name = class_labels[int(class_id)]
+            class_name = class_labels[int(class_id)]  # Class name dynamically retrieved
             freshness_percentage = freshness_percentage_by_cv_image(np.array(image))
             freshness = freshness_label(freshness_percentage)
             st.write(f"Detected {class_name} with confidence {confidence:.2f} at {bbox} - Freshness: {freshness} ({freshness_percentage}%)")
