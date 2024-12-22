@@ -2,6 +2,10 @@
 
 This is a Streamlit web application for detecting the freshness of fruits and vegetables from images. It uses object detection and freshness classification to determine the condition of various fruits/vegetables and provides a freshness label (Fresh, Good, Fair, Poor) along with the best-before information.
 
+## Screenshots 📸
+
+![mainpage](img1.jpg)
+
 ## Models Used
 
 ### 1. **YOLO (You Only Look Once) - Object Detection**
